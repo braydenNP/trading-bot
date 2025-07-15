@@ -61,6 +61,7 @@ def trailingStopLoss(order_id):
     failed = 0
     max_failures = 50
     timeout_duration = 15
+    check_interval = 2
     
     print(f"Starting trailing stop loss for order {order_id}")
     
@@ -100,8 +101,8 @@ def trailingStopLoss(order_id):
                     print(f"Stop loss increased from {trigger_price} to {new_trigger}")
                     failed = 0  # Reset failed counter on success
                     
-                    # Immediately continue to try again (no delay after success)
-                    continue
+                    # Wait before next check
+                    time.sleep(check_interval)
                     
                 except Exception as e:
                     failed += 1
@@ -120,7 +121,6 @@ def trailingStopLoss(order_id):
         except Exception as e:
             print(f"Unexpected error in trailing stop loss: {e}")
             time.sleep(2)
-
 
 #main code
 symbol = input("Enter a symbol: ")
