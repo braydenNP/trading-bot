@@ -12,7 +12,7 @@ load_dotenv()
 #conda activate myenv
 session = requests.Session()
 account_id = os.getenv('ACCOUNT_ID')
-username = os.getenv('USERNAME')
+username = os.getenv('USER_NAME')
 password = os.getenv('PASSWORD')
 pin = os.getenv('PIN')
 auth_token = ''
@@ -58,27 +58,69 @@ def buyAndMinimumStopLoss(usd_amount, symbol):
                 except Exception as e:
                     continue
 def trailingStopLoss(order_id):
+    failed = 0
+    max_failures = 50
+    timeout_duration = 15
+    
+    print(f"Starting trailing stop loss for order {order_id}")
+    
     while True:
-        data = bot.getStoploss(order_id)
-        trigger_price = data["trigger_price"]
-        new_trigger = trigger_price + 10
-        failed = 0
-        quantity = data["quantity"]
-        filled = data["filled"]
-        if filled != 0:
-            return
-        if failed < 50:
-            try: 
-                bot.modifyStoploss(order_id, quantity, new_trigger)
-                new_trigger += 10
-                print("stop loss increased to", new_trigger)
-                failed = 0
-            except Exception as e:
-                failed += 1
-        else:
-            print("time out 15 seconds")
-            time.sleep(15)
-            failed = 49
+        try:
+            # Get current stoploss data
+            data = bot.getStoploss(order_id)
+            
+            # Check if data retrieval failed
+            if data is None:
+                print("Failed to get stoploss data, retrying...")
+                time.sleep(2)
+                continue
+            
+            # Check if order is filled
+            filled = data.get("filled", 0)
+            if filled != 0:
+                print(f"Order filled: {filled} shares. Stopping trailing stop loss.")
+                return
+            
+            # Get current values
+            trigger_price = data.get("trigger_price")
+            quantity = data.get("quantity")
+            
+            if trigger_price is None or quantity is None:
+                print("Missing required data from API response")
+                time.sleep(2)
+                continue
+            
+            # Calculate new trigger price
+            new_trigger = trigger_price + 10
+            
+            # Try to modify stoploss
+            if failed < max_failures:
+                try:
+                    bot.modifyStoploss(order_id, quantity, new_trigger)
+                    print(f"Stop loss increased from {trigger_price} to {new_trigger}")
+                    failed = 0  # Reset failed counter on success
+                    
+                    # Immediately continue to try again (no delay after success)
+                    continue
+                    
+                except Exception as e:
+                    failed += 1
+                    print(f"Failed to modify stoploss (attempt {failed}/{max_failures}): {e}")
+                    
+                    # Short delay before retrying
+                    time.sleep(1)
+            else:
+                print(f"Max failures ({max_failures}) reached, timeout {timeout_duration} seconds")
+                time.sleep(timeout_duration)
+                failed = 0  # Reset counter after timeout
+                
+        except KeyboardInterrupt:
+            print("Trailing stop loss interrupted by user")
+            break
+        except Exception as e:
+            print(f"Unexpected error in trailing stop loss: {e}")
+            time.sleep(2)
+
 
 #main code
 symbol = input("Enter a symbol: ")
