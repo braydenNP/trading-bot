@@ -76,19 +76,19 @@ class TradingBot:
         if response.status_code != 200:
             raise Exception("Buy Order Limit error")
 
-    def sellOrderLimit(self, symbol, quantity, price):
-        payload = {
-            "account_id": self.account_id,
-            "symbol": symbol,
-            "duration": "DAY",
-            "side": "SELL",
-            "order_type": "LIMIT",
-            "quantity": quantity,
-            "limit_price": price
-        }
-        response = self.session.post(order_url, headers=self.headers, json=payload)
-        if response.status_code != 200:
-            raise Exception("Buy Order Limit error")
+    # def sellOrderLimit(self, symbol, quantity, price):
+    #     payload = {
+    #         "account_id": self.account_id,
+    #         "symbol": symbol,
+    #         "duration": "DAY",
+    #         "side": "SELL",
+    #         "order_type": "LIMIT",
+    #         "quantity": quantity,
+    #         "limit_price": price
+    #     }
+    #     response = self.session.post(order_url, headers=self.headers, json=payload)
+    #     if response.status_code != 200:
+    #         raise Exception("Buy Order Limit error")
         
     def buyOrderMarket(self, symbol, quantity):
         payload = {

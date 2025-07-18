@@ -2,7 +2,6 @@ import requests
 import os
 from auth import getAuth
 from actions import TradingBot
-from urllib.parse import urljoin
 from datetime import datetime
 import time
 from dotenv import load_dotenv
@@ -18,25 +17,119 @@ pin = os.getenv('PIN')
 auth_token = ''
 price=''
 total_bal = 60000
+bot = None
 #setup code
-if os.path.exists("auth.txt"):
-    with open("auth.txt", "r") as file:
-        auth_token = file.read()
-        try: 
-            bot = TradingBot(auth_token, account_id)
-            price = bot.buyPrice("PACK.XIDX")
-        except Exception as e:
-            print("GETTING PRICE FAILED")
-            auth_token = getAuth(username, password, pin)
-            with open("auth.txt", "w") as file:
-                file.write(auth_token)
-else:
-    print("auth.txt not found.")
-    auth_token = getAuth(username, password, pin)
-    with open("auth.txt", "w") as file:
-        file.write(auth_token)
+def setupAuth():
+    if os.path.exists("auth.txt"):
+        with open("auth.txt", "r") as file:
+            auth_token = file.read()
+            try: 
+                bot = TradingBot(auth_token, account_id)
+                price = bot.buyPrice("PACK.XIDX")
+            except Exception as e:
+                print("GETTING PRICE FAILED")
+                auth_token = getAuth(username, password, pin)
+                with open("auth.txt", "w") as file:
+                    file.write(auth_token)
+    else:
+        print("auth.txt not found.")
+        auth_token = getAuth(username, password, pin)
+        with open("auth.txt", "w") as file:
+            file.write(auth_token)
 
-bot = TradingBot(auth_token, account_id)
+def main():
+    #setupAuth()
+    bot = TradingBot(auth_token, account_id)
+
+    while True:
+        print("""
+Choose an option
+[1] Buy a stock and set a trailing stop loss immediately (only IDX)
+[2] Set a trailing stop loss for an already bought stock (needs order id of stop loss)
+[3] Check price of a stock
+[4] Buy a stock at market price
+[5] Sell a stock at market price
+[6] Buy a stock at limit price
+[7] Set a stoploss
+[0] Exit
+            """)
+        selection = int(input("Select an option: "))
+        match selection:
+            case 0:
+                print("0 selected, Exiting program")
+                return
+            case 1:
+                symbol = input("Enter a symbol: ")
+                usd_amount = int(input("Enter a sum of money(usd): "))
+                order_id = buyAndMinimumStopLoss(usd_amount, symbol)
+                print("order id of stop loss: ", order_id)
+                time.sleep(1)
+                trailingStopLoss(order_id)
+            case 2:
+                order_id = input("Enter an order id: ")
+                trailingStopLoss(order_id)
+            case 3:
+                #check price of a stock
+                symbol = input("Enter a symbol: ")
+                print(f"Price of ${symbol}:")
+                print(f"Buy: ${bot.buyPrice(symbol)}")
+                print(f"Sell: ${bot.sellPrice(symbol)}")
+            case 4:
+                #BUY a stock (MARKET)
+                symbol = input("Enter a symbol: ")
+                print(f"current BUY price of ${symbol} is ${bot.buyPrice(symbol)}")
+                print(f"current SELL price of ${symbol} is ${bot.sellPrice(symbol)}")
+
+                quantity = int(input("Enter a quantity: "))
+                confirm = input(f"Confirm to BUY ${quantity} of ${symbol}? (y/n): ")
+                if confirm == 'y':
+                    bot.buyOrderMarket(symbol, quantity)
+                else:
+                    print("Cancelled!")
+            case 5:
+                #SELL a stock (MARKET)
+                symbol = input("Enter a symbol: ")
+                print(f"current BUY price of ${symbol} is ${bot.buyPrice(symbol)}")
+                print(f"current SELL price of ${symbol} is ${bot.sellPrice(symbol)}")
+
+                quantity = int(input("Enter a quantity: "))
+                confirm = input(f"Confirm to SELL ${quantity} of ${symbol}? (y/n): ")
+                if confirm == 'y':
+                    bot.sellOrderMarket(symbol, quantity)
+                else:
+                    print("Cancelled!")
+            case 6:
+                #BUY a stock (LIMIT)
+                symbol = input("Enter a symbol: ")
+                print(f"current BUY price of ${symbol} is ${bot.buyPrice(symbol)}")
+                print(f"current SELL price of ${symbol} is ${bot.sellPrice(symbol)}")
+
+
+                quantity = int(input("Enter a quantity: "))
+                price = int(input("Enter a price: "))
+                confirm = input(f"Confirm to BUY ${quantity} of ${symbol} at price:${price}? (y/n): ")
+                if confirm == 'y':
+                    bot.buyOrderLimit(symbol, quantity, price)
+                else:
+                    print("Cancelled!")
+            case 7:
+                #set STOPLOSS
+                symbol = input("Enter a symbol: ")
+                print(f"current BUY price of ${symbol} is ${bot.buyPrice(symbol)}")
+                print(f"current SELL price of ${symbol} is ${bot.sellPrice(symbol)}")
+
+                quantity = int(input("Enter a quantity: "))
+                price = int(input("Enter a price: "))
+                confirm = input(f"Confirm to set STOPLOSS for ${quantity} of ${symbol} at price:${price}? (y/n): ")
+                if confirm == 'y':
+                    bot.setStoploss(symbol, quantity, price)
+                else:
+                    print("Cancelled!")
+
+if __name__ == "__main__":
+    main()
+
+
 def buyAndMinimumStopLoss(usd_amount, symbol):
     fx_rate = 1
     if 'XIDX' in symbol:
@@ -122,9 +215,3 @@ def trailingStopLoss(order_id):
             print(f"Unexpected error in trailing stop loss: {e}")
             time.sleep(2)
 
-#main code
-symbol = input("Enter a symbol: ")
-usd_amount = int(input("Enter a sum of money(usd): "))
-order_id = buyAndMinimumStopLoss(usd_amount, symbol)
-time.sleep(1)
-trailingStopLoss(order_id)
