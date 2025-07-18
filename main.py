@@ -38,7 +38,9 @@ def setupAuth():
             file.write(auth_token)
 
 def main():
-    #setupAuth()
+    setupAuth()
+    with open("auth.txt", "r") as file:
+        auth_token = file.read()
     bot = TradingBot(auth_token, account_id)
 
     while True:
